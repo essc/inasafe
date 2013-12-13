@@ -118,6 +118,7 @@ class CategorisedVectorHazardPopulationImpactFunction(FunctionProvider):
             'statistics_classes': self.parameters['categories']}
         my_impact_keywords.update(my_exposure_keywords)
         my_impact.keywords = my_impact_keywords
+        my_impact.name = 'Estimated Inundated in Categorized'
 
         return my_impact
 
@@ -213,6 +214,13 @@ class CategorisedVectorHazardPopulationImpactFunction(FunctionProvider):
         for category in self.parameters['categories']:
             if category == self.NO_DATA:
                 text = tr('No Hazard')
+            elif category <= 3:
+                if category == 1:
+                    text = tr('Low')
+                elif category == 2:
+                    text = tr('Medium')
+                elif category == 3:
+                    text = tr('High')
             else:
                 text = '%s %s' % (tr('Category'), category)
             th.add(m.Cell(m.ImportantText(text)))
