@@ -94,7 +94,7 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
             return dict_meta
 
     # Function documentation
-    title = tr('Be vectoring impacted')
+    title = tr('Be impacted by each category')
     synopsis = tr(
         'To assess the impacts of categorized hazard in raster '
         'format on structure/building raster layer.')
@@ -120,9 +120,10 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
     limitation = tr('The number of categories is three.')
     statistics_type = 'class_count'
     statistics_classes = ['None', 0, 1, 2, 3]
-    parameters = OrderedDict([('postprocessors', OrderedDict([
-        ('AggregationCategorical', {'on': True})]))
-    ])
+    parameters = OrderedDict([
+        ('Categorical thresholds', [1, 2, 3]),
+        ('postprocessors', OrderedDict([
+            ('AggregationCategorical', {'on': True})]))])
 
     def run(self, layers):
         """Impact plugin for hazard impact.
@@ -157,6 +158,11 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
         category = H.get_data()
         N = len(category)
 
+        # The 3 category
+        high_t = self.parameters['Categorical thresholds'][2]
+        medium_t = self.parameters['Categorical thresholds'][1]
+        low_t = self.parameters['Categorical thresholds'][0]
+
         # List attributes to carry forward to result layer
         #attributes = E.get_attribute_names()
 
@@ -173,13 +179,13 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
             ## FIXME it would be good if the affected were words not numbers
             ## FIXME need to read hazard layer and see category or keyword
             val = int(round(val))
-            if val == 3:
+            if val == high_t:
                 affected = 3
                 count3 += 1
-            elif val == 2:
+            elif val == medium_t:
                 affected = 2
                 count2 += 1
-            elif val == 1:
+            elif val == low_t:
                 affected = 1
                 count1 += 1
             elif val == 0:
@@ -219,15 +225,9 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
         impact_table = impact_summary
         map_title = tr('Categorised hazard impact on buildings')
 
-        print "sel target = %s" % self.target_field
         #FIXME it would be great to do categorized rather than grduated
         # Create style
-        #style_classes = [dict(label=tr('Low'), min=1, max=1,
-        #                      colour='#1EFC7C', transparency=0, size=1),
-        #                 dict(label=tr('Medium'), min=2, max=2,
-        #                      colour='#FFA500', transparency=0, size=1),
-        #                 dict(label=tr('High'), min=3, max=3,
-        #                      colour='#F31A1C', transparency=0, size=1)]
+
         style_classes = [dict(label=tr('No Flood'), value=0,
                               colour='#1EFC7C', transparency=0, size=1),
                          dict(label=tr('Low'), value=1,
