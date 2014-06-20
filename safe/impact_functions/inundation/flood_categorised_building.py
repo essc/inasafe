@@ -20,7 +20,7 @@ from safe.metadata import (
     hazard_definition,
     layer_vector_polygon,
     exposure_definition,
-    unit_normalised)
+    unit_categorised)
 from safe.storage.vector import Vector
 from safe.common.tables import Table, TableRow
 from safe.engine.interpolation import assign_hazard_values_to_exposure_data
@@ -78,7 +78,7 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
                     'hazard': {
                         'definition': hazard_definition,
                         'subcategory': hazard_all,
-                        'units': [unit_normalised],
+                        'units': [unit_categorised],
                         'layer_constraints': [layer_raster_numeric]
                     },
                     'exposure': {

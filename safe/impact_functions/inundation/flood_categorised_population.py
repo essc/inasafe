@@ -16,7 +16,7 @@ from safe.metadata import (
     unit_people_per_pixel,
     hazard_definition,
     exposure_definition,
-    unit_normalised)
+    unit_categorised)
 from safe.storage.raster import Raster
 from safe.common.utilities import ugettext as tr, format_int, round_thousand
 from safe.common.tables import Table, TableRow
@@ -71,7 +71,7 @@ class CategorisedFloodPopulationImpactFunction(FunctionProvider):
                     'hazard': {
                         'definition': hazard_definition,
                         'subcategory': hazard_flood,
-                        'units': [unit_normalised],
+                        'units': [unit_categorised],
                         'layer_constraints': [layer_raster_numeric]
                     },
                     'exposure': {
