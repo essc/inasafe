@@ -214,15 +214,9 @@ class CategorisedFloodPopulationImpactFunction(FunctionProvider):
         # Extend impact report for on-screen display
         table_body.extend([TableRow(tr('Notes'), header=True),
                            tr('Map shows population density in high, medium '
-                              'and flood areas'),
+                              'and low flood areas'),
                            tr('Total population: %s') % format_int(total)])
         impact_summary = Table(table_body).toNewlineFreeString()
-        map_title = tr('Population affected by flooding')
-        legend_notes = tr(
-            'Thousand separator is represented by %s' %
-            get_thousand_separator())
-        legend_units = tr('(people per cell)')
-        legend_title = tr('Population density')
 
         # Generate 8 equidistant classes across the range of flooded population
         # 8 is the number of classes in the predefined flood population style
@@ -234,12 +228,24 @@ class CategorisedFloodPopulationImpactFunction(FunctionProvider):
         # Modify labels in existing flood style to show quantities
         style_classes = style_info['style_classes']
 
+        style_classes[0]['label'] = tr(' ') % classes[0]
         style_classes[1]['label'] = tr('Low [%i people/cell]') % classes[1]
+        style_classes[2]['label'] = tr(' ') % classes[2]
+        style_classes[3]['label'] = tr(' ') % classes[3]
         style_classes[4]['label'] = tr('Medium [%i people/cell]') % classes[4]
+        style_classes[5]['label'] = tr(' ') % classes[5]
+        style_classes[6]['label'] = tr(' ') % classes[6]
         style_classes[7]['label'] = tr('High [%i people/cell]') % classes[7]
 
         style_info['legend_title'] = tr('Population Density')
 
+        # For printing map purpose
+        map_title = tr('Population affected by flooding')
+        legend_notes = tr(
+            'Thousand separator is represented by %s' %
+            get_thousand_separator())
+        legend_units = tr('(people per cell)')
+        legend_title = tr('Population density')
 
         # Create raster object and return
         R = Raster(O,
