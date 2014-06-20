@@ -228,7 +228,8 @@ class CategorisedFloodPopulationImpactFunction(FunctionProvider):
         # Modify labels in existing flood style to show quantities
         style_classes = style_info['style_classes']
 
-        style_classes[0]['label'] = tr(' ') % classes[0]
+        style_classes[0]['label'] = tr('Not Affected [%i people/cell]')\
+                                    % classes[0]
         style_classes[1]['label'] = tr('Low [%i people/cell]') % classes[1]
         style_classes[2]['label'] = tr(' ') % classes[2]
         style_classes[3]['label'] = tr(' ') % classes[3]
