@@ -18,7 +18,11 @@ from safe.metadata import (
     exposure_definition,
     unit_categorised)
 from safe.storage.raster import Raster
-from safe.common.utilities import ugettext as tr, format_int, round_thousand
+from safe.common.utilities import (
+    ugettext as tr,
+    format_int,
+    round_thousand,
+    get_thousand_separator)
 from safe.common.tables import Table, TableRow
 from safe.impact_functions.impact_function_metadata import (
     ImpactFunctionMetadata)
@@ -85,7 +89,7 @@ class CategorisedFloodPopulationImpactFunction(FunctionProvider):
             return dict_meta
 
     # Function documentation
-    title = tr('Be impacted by each category')
+    title = tr('Be affected by each flood category')
     synopsis = tr('To assess the impacts of categorized floods in raster '
                   'format on population raster layer.')
     actions = tr('Provide details about how many people would likely need '
@@ -179,31 +183,46 @@ class CategorisedFloodPopulationImpactFunction(FunctionProvider):
 
         # Generate impact report for the pdf map
         table_body = [question,
-                      TableRow([tr('People impacted '),
+                      TableRow([tr('Total Population affected by flooding '),
                                 '%s' % format_int(total_impact)],
                                header=True),
-                      TableRow([tr('People in high flood area '),
+                      TableRow([tr('Population within high flood areas '),
                                 '%s' % format_int(high)],
                                header=True),
-                      TableRow([tr('People in medium flood area '),
+                      TableRow([tr('Population within medium flood areas '),
                                 '%s' % format_int(medium)],
                                header=True),
-                      TableRow([tr('People in low flood area'),
+                      TableRow([tr('Population within low flood areas'),
                                 '%s' % format_int(low)],
                                header=True),
-                      TableRow([tr('People in no flood area'),
+                      TableRow([tr('Population not affected by flooding'),
                                 '%s' % format_int(zero)],
                                header=True)]
 
         impact_table = Table(table_body).toNewlineFreeString()
 
+        table_body.append(TableRow(tr('Action Checklist:'), header=True))
+        table_body.append(TableRow(tr('How will warnings be disseminated?')))
+        table_body.append(TableRow(tr('How will we reach stranded people?')))
+        table_body.append(TableRow(tr('Do we have enough relief items?')))
+        table_body.append(TableRow(tr('If yes, where are they located and how '
+                                      'will we distribute them?')))
+        table_body.append(TableRow(tr(
+            'If no, where can we obtain additional relief items from and how '
+            'will we transport them to here?')))
+
         # Extend impact report for on-screen display
         table_body.extend([TableRow(tr('Notes'), header=True),
-                           tr('Map shows population density in high or medium '
-                              'flood area'),
+                           tr('Map shows population density in high, medium '
+                              'and flood areas'),
                            tr('Total population: %s') % format_int(total)])
         impact_summary = Table(table_body).toNewlineFreeString()
-        map_title = tr('People in high flood areas')
+        map_title = tr('Population affected by flooding')
+        legend_notes = tr(
+            'Thousand separator is represented by %s' %
+            get_thousand_separator())
+        legend_units = tr('(people per cell)')
+        legend_title = tr('Population density')
 
         # Generate 8 equidistant classes across the range of flooded population
         # 8 is the number of classes in the predefined flood population style
@@ -221,14 +240,18 @@ class CategorisedFloodPopulationImpactFunction(FunctionProvider):
 
         style_info['legend_title'] = tr('Population Density')
 
+
         # Create raster object and return
         R = Raster(O,
                    projection=my_hazard.get_projection(),
                    geotransform=my_hazard.get_geotransform(),
-                   name=tr('Population which %s') % (
+                   name=tr('Population might %s') % (
                        get_function_title(self).lower()),
                    keywords={'impact_summary': impact_summary,
                              'impact_table': impact_table,
-                             'map_title': map_title},
+                             'map_title': map_title,
+                             'legend_notes': legend_notes,
+                             'legend_units': legend_units,
+                             'legend_title': legend_title},
                    style_info=style_info)
         return R
