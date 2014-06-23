@@ -228,7 +228,7 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
         #FIXME it would be great to do categorized rather than grduated
         # Create style
 
-        style_classes = [dict(label=tr('No Flood'), value=0,
+        style_classes = [dict(label=tr('Not Flooded'), value=0,
                               colour='#1EFC7C', transparency=0, size=1),
                          dict(label=tr('Low'), value=1,
                               colour='#EBF442', transparency=0, size=1),
@@ -241,7 +241,7 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
                           style_type='categorizedSymbol')
 
         # Create vector layer and return
-        name = 'Buildings Affected'
+        name = 'Buildings Affected by Flooding'
 
         V = Vector(data=building_impact,
                    projection=E.get_projection(),
