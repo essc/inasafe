@@ -119,7 +119,7 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
         'will be affected for the hazard given.')
     limitation = tr('The number of categories is three.')
     statistics_type = 'class_count'
-    statistics_classes = ['None', 0, 1, 2, 3]
+    statistics_classes = [0, 1, 2, 3]
     parameters = OrderedDict([
         ('Categorical thresholds', [1, 2, 3]),
         ('postprocessors', OrderedDict([
@@ -164,7 +164,7 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
         low_t = self.parameters['Categorical thresholds'][0]
 
         # List attributes to carry forward to result layer
-        #attributes = E.get_attribute_names()
+        #attributes = E.get_data()
 
         # Calculate building impact according to guidelines
         count3 = 0
@@ -191,8 +191,6 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
             elif val == 0:
                 affected = 0
                 count0 += 1
-            else:
-                affected = 'None'
 
             # Collect depth and calculated damage
             result_dict = {self.target_field: affected,
@@ -216,6 +214,20 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
                           TableRow([tr('Buildings in No flood area'),
                                     format_int(count0)]),
                           TableRow([tr('All Buildings'), format_int(N)])]
+
+        table_body.append(TableRow(tr('Action Checklist:'), header=True))
+        table_body.append(TableRow(
+            tr('Are the critical facilities still open?')))
+        table_body.append(TableRow(
+            tr('Which structures have warning capacity (eg. sirens, speakers, '
+               'etc.)?')))
+        table_body.append(TableRow(
+            tr('Which buildings will be evacuation centres?')))
+        table_body.append(TableRow(
+            tr('Where will we locate the operations centre?')))
+        table_body.append(TableRow(
+            tr('Where will we locate warehouse and/or distribution centres?')))
+
 
         table_body.append(TableRow(tr('Notes'), header=True))
         table_body.append(tr('Categorised hazard has only 3'
