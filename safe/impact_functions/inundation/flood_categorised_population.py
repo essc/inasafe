@@ -169,10 +169,6 @@ class CategorisedFloodPopulationImpactFunction(FunctionProvider):
         zero = int(numpy.sum(Z))
         total_impact = high + medium + low
 
-        print int(numpy.sum(H))
-        print int(numpy.sum(M))
-        print int(numpy.sum(L))
-
         # Don't show digits less than a 1000
         total = round_thousand(total)
         total_impact = round_thousand(total_impact)
