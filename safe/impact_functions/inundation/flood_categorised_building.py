@@ -1,36 +1,41 @@
-# -*- coding: utf-8 -*-
-"""Categorised raster hazard impacting vector layer of buildings
+# coding=utf-8
+"""InaSAFE Disaster risk tool by Australian Aid - Flood Impact on OSM
+Buildings
+
+Contact : ole.moller.nielsen@gmail.com
+
+.. note:: This program is free software; you can redistribute it and/or modify
+     it under the terms of the GNU General Public License as published by
+     the Free Software Foundation; either version 2 of the License, or
+     (at your option) any later version.
+
 """
 
-__license__ = "GPL"
-__copyright__ = 'Copyright 2014, Australia Indonesia Facility for '
-__copyright__ += 'Disaster Reduction'
-from safe.impact_functions.core import (FunctionProvider,
-                                        get_hazard_layer,
-                                        get_exposure_layer,
-                                        get_question)
-from safe.common.utilities import (ugettext as tr,
-                                   format_int)
 from safe.metadata import (
-    hazard_all,
+    hazard_flood,
+    layer_vector_polygon,
     layer_raster_numeric,
     exposure_structure,
     unit_building_type_type,
-    unit_building_generic,
     hazard_definition,
-    layer_vector_polygon,
     exposure_definition,
+    unit_building_generic,
     unit_categorised)
+from safe.common.utilities import OrderedDict
+from safe.impact_functions.core import (
+    FunctionProvider, get_hazard_layer, get_exposure_layer, get_question)
 from safe.storage.vector import Vector
+from safe.common.utilities import ugettext as tr, format_int
 from safe.common.tables import Table, TableRow
 from safe.engine.interpolation import assign_hazard_values_to_exposure_data
-from safe.common.utilities import OrderedDict
 from safe.impact_functions.impact_function_metadata import (
     ImpactFunctionMetadata)
+import logging
 from numpy import round
 
+LOGGER = logging.getLogger('InaSAFE')
 
-#FIXME: need to normalise all raster data Ole/Kristy
+
 class CategorisedHazardBuildingImpactFunction(FunctionProvider):
     """Impact plugin for categorising hazard impact on building data
 
@@ -77,7 +82,7 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
                 'categories': {
                     'hazard': {
                         'definition': hazard_definition,
-                        'subcategory': hazard_all,
+                        'subcategory': hazard_flood,
                         'units': [unit_categorised],
                         'layer_constraints': [layer_raster_numeric]
                     },
@@ -117,89 +122,128 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
         'Currently there should be 3 categories in the hazard layer. After '
         'that it will show the result and the total of buildings that '
         'will be affected for the hazard given.')
-    limitation = tr('The number of categories is three.')
-    statistics_type = 'class_count'
-    statistics_classes = [0, 1, 2, 3]
+
+    # parameters
     parameters = OrderedDict([
         ('Categorical thresholds', [1, 2, 3]),
-        ('postprocessors', OrderedDict([
-            ('AggregationCategorical', {'on': True})]))])
+        ('postprocessors', OrderedDict([('BuildingType', {'on': True})]))
+    ])
 
     def run(self, layers):
-        """Impact plugin for hazard impact.
+        """Flood impact to buildings (e.g. from Open Street Map).
 
-        Counts number of building exposed to each categorised hazard zones.
-
-        :param layers: List of layers expected to contain.
-                * hazard_layer: Hazard layer of volcano
-                * exposure_layer: Vector layer of structure data on
-                the same grid as hazard_layer
-
-        :returns: Map of building exposed to volcanic hazard zones.
-                  Table with number of buildings affected
-        :rtype: dict
+         :param layers: List of layers expected to contain.
+                * my_hazard: Hazard layer of flood
+                * my_exposure: Vector layer of structure data on
+                the same grid as my_hazard
         """
-
-        # Extract data
-        H = get_hazard_layer(layers)    # Value
-        E = get_exposure_layer(layers)  # Building locations
-
-        question = get_question(H.get_name(),
-                                E.get_name(),
-                                self)
-
-        # Interpolate hazard level to building locations
-        H = assign_hazard_values_to_exposure_data(H, E,
-                                                  attribute_name='hazard_lev',
-                                                  mode='constant')
-
-        # Extract relevant numerical data
-        coordinates = H.get_geometry()
-        category = H.get_data()
-        N = len(category)
-
-        # The 3 category
+                # The 3 category
         high_t = self.parameters['Categorical thresholds'][2]
         medium_t = self.parameters['Categorical thresholds'][1]
         low_t = self.parameters['Categorical thresholds'][0]
 
-        # List attributes to carry forward to result layer
-        #attributes = E.get_data()
+        # Extract data
+        my_hazard = get_hazard_layer(layers)  # Depth
+        my_exposure = get_exposure_layer(layers)  # Building locations
 
-        # Calculate building impact according to guidelines
-        count3 = 0
-        count2 = 0
+        question = get_question(
+            my_hazard.get_name(),
+            my_exposure.get_name(),
+            self)
+
+        # Determine attribute name for hazard levels
+        if my_hazard.is_raster:
+            mode = 'grid'
+            hazard_attribute = 'depth'
+        else:
+            mode = 'regions'
+            hazard_attribute = None
+
+        # Interpolate hazard level to building locations
+        I = assign_hazard_values_to_exposure_data(
+            my_hazard, my_exposure, attribute_name=hazard_attribute)
+
+        # Extract relevant exposure data
+        attribute_names = I.get_attribute_names()
+        attributes = I.get_data()
+        N = len(I)
+        # Calculate building impact
+        count = 0
         count1 = 0
-        count0 = 0
-        building_impact = []
+        count2 = 0
+        count3 = 0
+        buildings = {}
+        affected_buildings = {}
         for i in range(N):
             # Get category value
-            val = float(category[i]['hazard_lev'])
+            val = float(attributes[i][hazard_attribute])
 
             ## FIXME it would be good if the affected were words not numbers
             ## FIXME need to read hazard layer and see category or keyword
             val = int(round(val))
             if val == high_t:
-                affected = 3
                 count3 += 1
             elif val == medium_t:
-                affected = 2
                 count2 += 1
             elif val == low_t:
-                affected = 1
                 count1 += 1
             elif val == 0:
-                affected = 0
-                count0 += 1
+                count += 1
 
-            # Collect depth and calculated damage
-            result_dict = {self.target_field: affected,
-                           'CATEGORY': val}
+            # Count affected buildings by usage type if available
+            if 'type' in attribute_names:
+                usage = attributes[i]['type']
+            elif 'TYPE' in attribute_names:
+                usage = attributes[i]['TYPE']
+            else:
+                usage = None
+            if 'amenity' in attribute_names and (usage is None or usage == 0):
+                usage = attributes[i]['amenity']
+            if 'building_t' in attribute_names and (usage is None
+                                                    or usage == 0):
+                usage = attributes[i]['building_t']
+            if 'office' in attribute_names and (usage is None or usage == 0):
+                usage = attributes[i]['office']
+            if 'tourism' in attribute_names and (usage is None or usage == 0):
+                usage = attributes[i]['tourism']
+            if 'leisure' in attribute_names and (usage is None or usage == 0):
+                usage = attributes[i]['leisure']
+            if 'building' in attribute_names and (usage is None or usage == 0):
+                usage = attributes[i]['building']
+                if usage == 'yes':
+                    usage = 'building'
 
-            # Record result for this feature
-            building_impact.append(result_dict)
+            if usage is not None and usage != 0:
+                key = usage
+            else:
+                key = 'unknown'
 
-        # Create impact report
+            if key not in buildings:
+                buildings[key] = 0
+                affected_buildings[key] = 0
+
+            # Count all buildings by type
+            buildings[key] += 1
+            if val is True:
+                # Count affected buildings by type
+                affected_buildings[key] += 1
+
+            # Add calculated impact to existing attributes
+            attributes[i][self.target_field] = int(val)
+
+        # Lump small entries and 'unknown' into 'other' category
+        for usage in buildings.keys():
+            val = buildings[usage]
+            if val < 25 or usage == 'unknown':
+                if 'other' not in buildings:
+                    buildings['other'] = 0
+                    affected_buildings['other'] = 0
+
+                buildings['other'] += val
+                affected_buildings['other'] += affected_buildings[usage]
+                del buildings[usage]
+                del affected_buildings[usage]
+
         # Generate impact summary
             table_body = [question,
                           TableRow([tr('Hazard Level'),
@@ -212,8 +256,41 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
                           TableRow([tr('Buildings in Low flood area'),
                                     format_int(count1)]),
                           TableRow([tr('Buildings in No flood area'),
-                                    format_int(count0)]),
+                                    format_int(count)]),
                           TableRow([tr('All Buildings'), format_int(N)])]
+
+        school_closed = 0
+        hospital_closed = 0
+        # Generate break down by building usage type is available
+        list_type_attribute = [
+            'TYPE', 'type', 'amenity', 'building_t', 'office',
+            'tourism', 'leisure', 'building']
+        intersect_type = set(attribute_names) & set(list_type_attribute)
+        if len(intersect_type) > 0:
+            # Make list of building types
+            building_list = []
+            for usage in buildings:
+                building_type = usage.replace('_', ' ')
+
+                # Lookup internationalised value if available
+                building_type = tr(building_type)
+                building_list.append([
+                    building_type.capitalize(),
+                    format_int(affected_buildings[usage]),
+                    format_int(buildings[usage])])
+                if building_type == 'school':
+                    school_closed = affected_buildings[usage]
+                if building_type == 'hospital':
+                    hospital_closed = affected_buildings[usage]
+
+            # Sort alphabetically
+            building_list.sort()
+
+            table_body.append(TableRow(tr('Breakdown by building type'),
+                                       header=True))
+            for row in building_list:
+                s = TableRow(row)
+                table_body.append(s)
 
         table_body.append(TableRow(tr('Action Checklist:'), header=True))
         table_body.append(TableRow(
@@ -228,18 +305,26 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
         table_body.append(TableRow(
             tr('Where will we locate warehouse and/or distribution centres?')))
 
+        if school_closed > 0:
+            table_body.append(TableRow(
+                tr('Where will the students from the %s closed schools go to '
+                   'study?') % format_int(school_closed)))
+
+        if hospital_closed > 0:
+            table_body.append(TableRow(
+                tr('Where will the patients from the %s closed hospitals go '
+                   'for treatment and how will we transport them?') %
+                format_int(hospital_closed)))
 
         table_body.append(TableRow(tr('Notes'), header=True))
-        table_body.append(tr('Categorised hazard has only 3'
-                             ' classes, high, medium and low.'))
+        table_body.append(tr('Map shows buildings affected in'
+                             ' low, medium and flood areas.'))
 
+        # Result
         impact_summary = Table(table_body).toNewlineFreeString()
         impact_table = impact_summary
-        map_title = tr('Categorised hazard impact on buildings')
 
-        #FIXME it would be great to do categorized rather than grduated
         # Create style
-
         style_classes = [dict(label=tr('Not Flooded'), value=0,
                               colour='#1EFC7C', transparency=0, size=1),
                          dict(label=tr('Low'), value=1,
@@ -252,19 +337,25 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
                           style_classes=style_classes,
                           style_type='categorizedSymbol')
 
-        # Create vector layer and return
-        name = 'Buildings Affected by Flooding'
+        # For printing map purpose
+        map_title = tr('Buildings affected by flooding')
+        legend_units = tr('(inundated or not inundated)')
+        legend_title = tr('Structure inundated status')
 
-        V = Vector(data=building_impact,
-                   projection=E.get_projection(),
-                   geometry=coordinates,
-                   geometry_type=E.geometry_type,
-                   keywords={'impact_summary': impact_summary,
-                             'impact_table': impact_table,
-                             'map_title': map_title,
-                             'target_field': self.target_field,
-                             'statistics_type': self.statistics_type,
-                             'statistics_classes': self.statistics_classes},
-                   name=name,
-                   style_info=style_info)
-        return V
+        # Create vector layer and return
+        vector_layer = Vector(
+            data=attributes,
+            projection=I.get_projection(),
+            geometry=I.get_geometry(),
+            name=tr('Estimated buildings affected'),
+            keywords={
+                'impact_summary': impact_summary,
+                'impact_table': impact_table,
+                'target_field': self.target_field,
+                'map_title': map_title,
+                'legend_units': legend_units,
+                'legend_title': legend_title,
+                'buildings_total': N,
+                'buildings_affected': count1 + count2 + count3},
+            style_info=style_info)
+        return vector_layer
