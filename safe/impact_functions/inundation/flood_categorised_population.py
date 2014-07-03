@@ -7,7 +7,9 @@ from safe.impact_functions.core import (
     get_hazard_layer,
     get_exposure_layer,
     get_question,
-    get_function_title)
+    get_function_title,
+    default_minimum_needs,
+    evacuated_population_weekly_needs)
 from safe.impact_functions.styles import flood_population_style as style_info
 from safe.metadata import (
     hazard_flood,
@@ -120,7 +122,11 @@ class CategorisedFloodPopulationImpactFunction(FunctionProvider):
                 'params': OrderedDict([
                     ('youth_ratio', defaults['YOUTH_RATIO']),
                     ('adult_ratio', defaults['ADULT_RATIO']),
-                    ('elderly_ratio', defaults['ELDERLY_RATIO'])])})]))])
+                    ('elderly_ratio', defaults['ELDERLY_RATIO'])])}),
+            ('MinimumNeeds', {'on': True}),
+        ])),
+        ('minimum needs', default_minimum_needs())
+    ])
 
     def run(self, layers):
         """Plugin for impact of population as derived by categorised flood.
@@ -177,6 +183,12 @@ class CategorisedFloodPopulationImpactFunction(FunctionProvider):
         low = round_thousand(low)
         zero = round_thousand(zero)
 
+        # Calculate estimated minimum needs
+        minimum_needs = self.parameters['minimum needs']
+
+        tot_needs = evacuated_population_weekly_needs(total_impact,
+                                                      minimum_needs)
+
         # Generate impact report for the pdf map
         table_body = [question,
                       TableRow([tr('Total Population affected by flooding '),
@@ -193,7 +205,21 @@ class CategorisedFloodPopulationImpactFunction(FunctionProvider):
                                header=True),
                       TableRow([tr('Population not affected by flooding'),
                                 '%s' % format_int(zero)],
-                               header=True)]
+                               header=True),
+                      TableRow(tr('Table below shows the weekly minimum '
+                                  'needs for all evacuated people')),
+                      TableRow([tr('Needs per week'), tr('Total')],
+                               header=True),
+                      [tr('Rice [kg]'),
+                       format_int(tot_needs['rice'])],
+                      [tr('Drinking Water [l]'),
+                       format_int(tot_needs['drinking_water'])],
+                      [tr('Clean Water [l]'),
+                       format_int(tot_needs['water'])],
+                      [tr('Family Kits'),
+                       format_int(tot_needs['family_kits'])],
+                      [tr('Toilets'),
+                       format_int(tot_needs['toilets'])]]
 
         impact_table = Table(table_body).toNewlineFreeString()
 
