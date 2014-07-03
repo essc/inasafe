@@ -161,9 +161,18 @@ class CategorisedFloodPopulationImpactFunction(FunctionProvider):
 
         # Calculate impact as population exposed to each category
         P = my_exposure.get_data(nan=0.0, scaling=True)
-        H = numpy.where(C == high_t, P, 0)
-        M = numpy.where(C == medium_t, P, 0)
-        L = numpy.where(C == low_t, P, 0)
+        if high_t == 0:
+            H = numpy.where(0, P, 0)
+        else:
+            H = numpy.where(C == high_t, P, 0)
+        if medium_t == 0:
+            M = numpy.where(0, P, 0)
+        else:
+            M = numpy.where(C == medium_t, P, 0)
+        if low_t == 0:
+            L = numpy.where(0, P, 0)
+        else:
+            L = numpy.where(C == low_t, P, 0)
         Z = numpy.where(C == 0, P, 0)
         O = numpy.where(((C > 0) & (C <= high_t)), P, 0)
 
