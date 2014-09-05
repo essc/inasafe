@@ -114,7 +114,7 @@ class CategorisedFloodPopulationImpactFunction(FunctionProvider):
     # Configurable parameters
     defaults = get_defaults()
     parameters = OrderedDict([
-        ('Categorical thresholds', [1, 2, 3]),
+        ('Categorical thresholds', [1.0, 2.0, 3.0]),
         ('postprocessors', OrderedDict([
             ('Gender', {'on': True}),
             ('Age', {

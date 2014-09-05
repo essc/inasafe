@@ -125,7 +125,7 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
 
     # parameters
     parameters = OrderedDict([
-        ('Categorical thresholds', [1, 2, 3]),
+        ('Categorical thresholds', [1.0, 2.0, 3.0]),
         ('postprocessors', OrderedDict([('BuildingType', {'on': True})]))
     ])
 
