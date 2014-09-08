@@ -327,11 +327,11 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
         # Create style
         style_classes = [dict(label=tr('Not Flooded'), value=0,
                               colour='#1EFC7C', transparency=0, size=1),
-                         dict(label=tr('Low'), value=1,
+                         dict(label=tr('Low'), value=low_t,
                               colour='#EBF442', transparency=0, size=1),
-                         dict(label=tr('Medium'), value=2,
+                         dict(label=tr('Medium'), value=medium_t,
                               colour='#F4A442', transparency=0, size=1),
-                         dict(label=tr('High'), value=3,
+                         dict(label=tr('High'), value=high_t,
                               colour='#F31A1C', transparency=0, size=1)]
         style_info = dict(target_field=self.target_field,
                           style_classes=style_classes,
