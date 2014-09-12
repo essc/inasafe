@@ -153,10 +153,8 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
 
         # Determine attribute name for hazard levels
         if my_hazard.is_raster:
-            mode = 'grid'
             hazard_attribute = 'depth'
         else:
-            mode = 'regions'
             hazard_attribute = None
 
         # Interpolate hazard level to building locations
@@ -180,7 +178,7 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
 
             ## FIXME it would be good if the affected were words not numbers
             ## FIXME need to read hazard layer and see category or keyword
-            val = int(round(val))
+            val = float(round(val))
             if val == high_t:
                 count3 += 1
             elif val == medium_t:
@@ -229,7 +227,7 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
                 affected_buildings[key] += 1
 
             # Add calculated impact to existing attributes
-            attributes[i][self.target_field] = int(val)
+            attributes[i][self.target_field] = float(val)
 
         # Lump small entries and 'unknown' into 'other' category
         for usage in buildings.keys():
@@ -247,7 +245,7 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
         # Generate impact summary
             table_body = [question,
                           TableRow([tr('Hazard Level'),
-                                    tr('Buildings Affected')],
+                                    tr('Number of Buildings')],
                           header=True),
                           TableRow([tr('Buildings in High flood area'),
                                     format_int(count3)]),
@@ -257,6 +255,9 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
                                     format_int(count1)]),
                           TableRow([tr('Buildings in No flood area'),
                                     format_int(count)]),
+                          TableRow([tr(' '), tr(' ')]),
+                          TableRow([tr('Total of Affected Buildings'),
+                                    format_int(count1 + count2 + count3)]),
                           TableRow([tr('All Buildings'), format_int(N)])]
 
         school_closed = 0
