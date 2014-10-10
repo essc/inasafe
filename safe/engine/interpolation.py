@@ -213,7 +213,7 @@ def check_inputs(hazard, exposure, layer_name, attribute_name):
 #-------------------------------------------------------------
 def interpolate_raster_vector(source, target,
                               layer_name=None, attribute_name=None,
-                              mode='linear'):
+                              mode='constant'):
     """Interpolate from raster layer to vector data
 
     Args:
@@ -250,7 +250,8 @@ def interpolate_raster_vector(source, target,
         P = convert_polygons_to_centroids(target)
         R = interpolate_raster_vector_points(source, P,
                                              layer_name=layer_name,
-                                             attribute_name=attribute_name)
+                                             attribute_name=attribute_name,
+                                             mode=mode)
         # In case of polygon data, restore the polygon geometry
         # Do this setting the geometry of the returned set to
         # that of the original polygon

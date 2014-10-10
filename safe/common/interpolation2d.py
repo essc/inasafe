@@ -31,7 +31,7 @@ LOGGER = logging.getLogger('InaSAFE')
 
 
 # noinspection PyArgumentEqualDefault,PyTypeChecker
-def interpolate2d(x, y, z, points, mode='linear', bounds_error=False):
+def interpolate2d(x, y, z, points, mode='constant', bounds_error=False):
     """Fundamental 2D interpolation routine
 
     :param x: 1D array of x-coordinates of the mesh on which to interpolate
@@ -136,9 +136,9 @@ def interpolate2d(x, y, z, points, mode='linear', bounds_error=False):
         # Piecewise constant (as verified in input_check)
 
         # Set up masks for the quadrants
-        left = alpha < 0.5
+        left = alpha < 0.30
         right = -left
-        lower = beta < 0.5
+        lower = beta < 0.50
         upper = -lower
 
         lower_left = lower * left
