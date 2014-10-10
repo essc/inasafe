@@ -1,5 +1,5 @@
 # coding=utf-8
-"""InaSAFE Disaster risk tool by Australian Aid - Flood Impact on OSM
+"""InaSAFE Disaster risk tool by Australian Aid - Impact on OSM
 Buildings
 
 Contact : ole.moller.nielsen@gmail.com
@@ -10,9 +10,8 @@ Contact : ole.moller.nielsen@gmail.com
      (at your option) any later version.
 
 """
-
 from safe.metadata import (
-    hazard_flood,
+    hazard_all,
     layer_vector_polygon,
     layer_raster_numeric,
     exposure_structure,
@@ -25,22 +24,21 @@ from safe.common.utilities import OrderedDict
 from safe.impact_functions.core import (
     FunctionProvider, get_hazard_layer, get_exposure_layer, get_question)
 from safe.storage.vector import Vector
+from safe.engine.interpolation import assign_hazard_values_to_exposure_data
 from safe.common.utilities import ugettext as tr, format_int
 from safe.common.tables import Table, TableRow
-from safe.engine.interpolation import assign_hazard_values_to_exposure_data
 from safe.impact_functions.impact_function_metadata import (
     ImpactFunctionMetadata)
 import logging
 from numpy import round
-
 LOGGER = logging.getLogger('InaSAFE')
 
 
-class CategorisedHazardBuildingImpactFunction(FunctionProvider):
+class CategorisedFloodBuildingImpactFunction(FunctionProvider):
     """Impact plugin for categorising hazard impact on building data
 
-    :author AIFDR
-    :rating 2
+    :author ESSC
+    :rating 3
     :param requires category=='hazard' and \
                     unit=='categorised' and \
                     layertype=='raster'
@@ -74,7 +72,7 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
                 'id': 'CategorisedHazardBuildingImpactFunction',
                 'name': tr('Categorised Hazard Building Impact Function'),
                 'impact': tr('Be impacted'),
-                'author': 'AIFDR',
+                'author': 'ESSC',
                 'date_implemented': 'N/A',
                 'overview': tr(
                     'To assess the impacts of categorized hazards in raster '
@@ -82,7 +80,7 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
                 'categories': {
                     'hazard': {
                         'definition': hazard_definition,
-                        'subcategory': hazard_flood,
+                        'subcategory': hazard_all,
                         'units': [unit_categorised],
                         'layer_constraints': [layer_raster_numeric]
                     },
@@ -125,22 +123,24 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
 
     # parameters
     parameters = OrderedDict([
-        ('Categorical thresholds', [1.0, 2.0, 3.0]),
+        ('low_thresholds', 1.0),
+        ('medium_thresholds', 2.0),
+        ('high_thresholds', 3.0),
         ('postprocessors', OrderedDict([('BuildingType', {'on': True})]))
     ])
 
     def run(self, layers):
-        """Flood impact to buildings (e.g. from Open Street Map).
+        """Categorical hazard impact to buildings (e.g. from Open Street Map).
 
          :param layers: List of layers expected to contain.
-                * my_hazard: Hazard layer of flood
+                * my_hazard: Categorical Hazard layer
                 * my_exposure: Vector layer of structure data on
                 the same grid as my_hazard
         """
                 # The 3 category
-        high_t = self.parameters['Categorical thresholds'][2]
-        medium_t = self.parameters['Categorical thresholds'][1]
-        low_t = self.parameters['Categorical thresholds'][0]
+        high_t = self.parameters['high_thresholds']
+        medium_t = self.parameters['medium_thresholds']
+        low_t = self.parameters['low_thresholds']
 
         # Extract data
         my_hazard = get_hazard_layer(layers)  # Depth
@@ -157,14 +157,17 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
         else:
             hazard_attribute = None
 
-        # Interpolate hazard level to building locations
-        I = assign_hazard_values_to_exposure_data(
-            my_hazard, my_exposure, attribute_name=hazard_attribute)
+        O = assign_hazard_values_to_exposure_data(
+            my_hazard,
+            my_exposure,
+            attribute_name=hazard_attribute,
+            mode='constant')
 
         # Extract relevant exposure data
-        attribute_names = I.get_attribute_names()
-        attributes = I.get_data()
-        N = len(I)
+        attribute_names = O.get_attribute_names()
+        attributes = O.get_data()
+
+        N = len(O)
         # Calculate building impact
         count = 0
         count1 = 0
@@ -247,13 +250,13 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
                           TableRow([tr('Hazard Level'),
                                     tr('Number of Buildings')],
                           header=True),
-                          TableRow([tr('Buildings in High flood area'),
+                          TableRow([tr('Buildings in High risk area'),
                                     format_int(count3)]),
-                          TableRow([tr('Buildings in Medium flood area'),
+                          TableRow([tr('Buildings in Medium risk area'),
                                     format_int(count2)]),
-                          TableRow([tr('Buildings in Low flood area'),
+                          TableRow([tr('Buildings in Low risk area'),
                                     format_int(count1)]),
-                          TableRow([tr('Buildings in No flood area'),
+                          TableRow([tr('Buildings in No risk area'),
                                     format_int(count)]),
                           TableRow([tr(' '), tr(' ')]),
                           TableRow([tr('Total of Affected Buildings'),
@@ -319,14 +322,14 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
 
         table_body.append(TableRow(tr('Notes'), header=True))
         table_body.append(tr('Map shows buildings affected in'
-                             ' low, medium and flood areas.'))
+                             ' low, medium and high risk areas.'))
 
         # Result
         impact_summary = Table(table_body).toNewlineFreeString()
         impact_table = impact_summary
 
         # Create style
-        style_classes = [dict(label=tr('Not Flooded'), value=0,
+        style_classes = [dict(label=tr('Not Affected'), value=0,
                               colour='#1EFC7C', transparency=0, size=1),
                          dict(label=tr('Low'), value=low_t,
                               colour='#EBF442', transparency=0, size=1),
@@ -339,15 +342,15 @@ class CategorisedHazardBuildingImpactFunction(FunctionProvider):
                           style_type='categorizedSymbol')
 
         # For printing map purpose
-        map_title = tr('Buildings affected by flooding')
-        legend_units = tr('(inundated or not inundated)')
+        map_title = tr('Buildings affected')
+        legend_units = tr('(Low, Medium, High)')
         legend_title = tr('Structure inundated status')
 
         # Create vector layer and return
         vector_layer = Vector(
             data=attributes,
-            projection=I.get_projection(),
-            geometry=I.get_geometry(),
+            projection=my_exposure.get_projection(),
+            geometry=my_exposure.get_geometry(),
             name=tr('Estimated buildings affected'),
             keywords={
                 'impact_summary': impact_summary,
